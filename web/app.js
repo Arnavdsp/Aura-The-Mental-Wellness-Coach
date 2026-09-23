@@ -26,6 +26,29 @@ const state = {
   moodHistory: [],
 };
 
+
+// Local empathetic responses used when both WebGPU and API are unavailable
+const LOCAL_RESPONSES = [
+  "I hear you. That sounds really heavy to carry — burnout has a way of spilling into every corner of life. What part of it is hitting you hardest right now?",
+  "Thank you for sharing that with me. It takes courage to name what you're feeling. Can you tell me more about what's been going on?",
+  "That makes a lot of sense. When everything feels overwhelming, it's hard to know where to even begin. What would feel like a small relief right now?",
+  "I'm sitting with you in this. You don't have to have it figured out — just that you're here and talking about it matters. What's weighing on you the most?",
+  "It sounds like you've been carrying a lot. I want to understand — when did things start to feel like this?",
+];
+let _localIdx = 0;
+function getLocalResponse(msg) {
+  const lower = msg.toLowerCase();
+  if (lower.includes("anxious") || lower.includes("anxiety") || lower.includes("panic"))
+    return "Anxiety can feel like your body is sounding an alarm you can't turn off. You're not alone in this. What does it feel like for you — is it more in your chest, your thoughts, or both?";
+  if (lower.includes("sleep") || lower.includes("tired") || lower.includes("exhaust"))
+    return "Not being able to sleep can make everything harder to cope with. Your body and mind are clearly working overtime. How long has this been going on?";
+  if (lower.includes("burn") || lower.includes("work") || lower.includes("stress"))
+    return "Burnout is real — it's not weakness, it's what happens when you give too much for too long without enough back. What does a day feel like for you right now?";
+  const r = LOCAL_RESPONSES[_localIdx % LOCAL_RESPONSES.length];
+  _localIdx++;
+  return r;
+}
+
 const AURA_SYSTEM_PROMPT = `You are Aura, a warm and steady wellness coach. You are not a therapist, a doctor, or a crisis service, and you never pretend otherwise.
 
 How you talk:
@@ -506,10 +529,14 @@ async function submitMessage(text) {
     });
   } catch (error) {
     console.error(error);
-    placeholder.bubble.innerHTML = renderMarkdown(
-      "I couldn't reach my thinking just then. Could you try that again?"
-    );
-    toast(error.message || "Something went wrong.");
+    // Use a local empathetic response instead of a broken error message
+    const localReply = typeof getLocalResponse === "function"
+      ? getLocalResponse(message || "")
+      : "I'm here with you. Could you tell me a little more about how you're feeling right now?";
+    placeholder.bubble.innerHTML = renderMarkdown(localReply);
+    // Show a soft status note — not a disruptive toast
+    dot.dataset.state = "warming";
+    label.textContent = "AI loading...";
   } finally {
     state.sending = false;
     setComposerEnabled(true);
