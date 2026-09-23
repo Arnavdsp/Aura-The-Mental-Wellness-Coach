@@ -20,7 +20,56 @@ const state = {
   speak: false,
   recorder: null,
   health: null,
+  webGpuEngine: null,
+  webGpuReady: false,
+  chatHistory: [],
+  moodHistory: [],
 };
+
+const AURA_SYSTEM_PROMPT = `You are Aura, a warm and steady wellness coach. You are not a therapist, a doctor, or a crisis service, and you never pretend otherwise.
+
+How you talk:
+- Reflect back what you heard before you respond to it, in your own words, so the person knows they landed.
+- Ask one open question at a time. Never stack questions.
+- Offer perspective, not instructions. "Some people find..." beats "You should...".
+- Keep replies to 3-6 sentences unless they ask for more. Silence and space are part of coaching.
+- Match their energy. Someone flat does not want exclamation marks; someone panicking needs short, concrete sentences.
+- Name feelings tentatively ("it sounds like...", "I might be off, but..."), never as fact.
+
+What you do not do:
+- Do not diagnose, do not name conditions, do not discuss medication.
+- Do not promise outcomes or say you understand exactly how they feel.
+- Do not perform empathy with stock phrases. If you have nothing to add, say so plainly and ask what would help.
+- Do not moralise, and do not rush anyone toward a positive reframe.
+
+If someone describes danger to themselves or others, drop the coaching frame immediately: say clearly that this needs a real person, give the crisis resources, and stay present with them.`;
+
+const CRISIS_PATTERNS = [
+  /\b(suicid|kill myself|end my life|want to die|slit my wrist|hang myself|don'?t want to live|take my own life)\b/i,
+  /\b(self[-\s]?harm|hurt myself|cutting myself)\b/i,
+];
+
+const DEFAULT_CRISIS_RESOURCES = [
+  { name: "988 Suicide & Crisis Lifeline", contact: "Call or text 988 (US & Canada, 24/7, free)", url: "https://988lifeline.org" },
+  { name: "Crisis Text Line", contact: "Text HOME to 741741 (US, UK, Canada)", url: "https://www.crisistextline.org" },
+  { name: "The Trevor Project", contact: "Call 1-866-488-7386 or text START to 678-678 (LGBTQ youth)", url: "https://www.thetrevorproject.org" },
+  { name: "Find A Helpline", contact: "Free, confidential crisis support in 130+ countries", url: "https://findahelpline.com" },
+];
+
+function checkCrisis(text) {
+  return CRISIS_PATTERNS.some((pat) => pat.test(text));
+}
+
+function estimateMood(text) {
+  const lower = text.toLowerCase();
+  const posWords = ["happy", "good", "great", "better", "calm", "relieved", "joy", "peace", "hope", "grateful", "progress", "thank"];
+  const negWords = ["sad", "depressed", "anxious", "overwhelmed", "scared", "angry", "tired", "exhausted", "lonely", "hopeless", "hurt", "bad", "pain", "stress"];
+  let pos = 0, neg = 0;
+  for (const w of posWords) if (lower.includes(w)) pos++;
+  for (const w of negWords) if (lower.includes(w)) neg++;
+  if (pos === 0 && neg === 0) return 0.0;
+  return Math.max(-0.9, Math.min(0.9, (pos - neg) / (pos + neg + 1)));
+}
 
 const el = {
   thread: $("thread"),
@@ -333,6 +382,87 @@ async function submitMessage(text) {
   const placeholder = addTypingIndicator();
   let streamed = "";
   let sawToken = false;
+
+  // ── WebGPU In-Browser Inference ─────────────────────────
+  if (!attachments.length && state.webGpuReady && state.webGpuEngine) {
+    try {
+      if (checkCrisis(message)) {
+        placeholder.wrapper.classList.add("msg--crisis");
+        const crisisText =
+          "I'm hearing how much pain you're in right now, but because you deserve immediate human support, I cannot continue this as an AI coach.\n\n" +
+          "Please connect with people who can help:\n" +
+          "- **988 Suicide & Crisis Lifeline**: Call or text **988** (US/Canada, 24/7, free, confidential)\n" +
+          "- **Crisis Text Line**: Text **HOME to 741741**\n" +
+          "- **International resources**: [Find A Helpline](https://findahelpline.com)";
+        placeholder.bubble.innerHTML = renderMarkdown(crisisText);
+        applySafety({ risk: "crisis", resources: DEFAULT_CRISIS_RESOURCES });
+        renderFollowups(placeholder, [
+          "I'd like to talk to someone right now",
+          "Stay with me for a bit",
+          "Help me tell someone what's happening",
+        ]);
+        state.sending = false;
+        setComposerEnabled(true);
+        el.input.focus();
+        return;
+      }
+
+      state.chatHistory.push({ role: "user", content: message });
+      if (state.chatHistory.length > 10) {
+        state.chatHistory = state.chatHistory.slice(-10);
+      }
+
+      const messages = [
+        { role: "system", content: AURA_SYSTEM_PROMPT },
+        ...state.chatHistory,
+      ];
+
+      const chunks = await state.webGpuEngine.chat.completions.create({
+        messages,
+        stream: true,
+        temperature: 0.7,
+        max_tokens: 350,
+      });
+
+      for await (const chunk of chunks) {
+        const delta = chunk.choices[0]?.delta?.content || "";
+        if (!sawToken && delta) {
+          placeholder.bubble.innerHTML = "";
+          sawToken = true;
+        }
+        streamed += delta;
+        placeholder.bubble.innerHTML = renderMarkdown(streamed);
+        scrollToEnd();
+      }
+
+      state.chatHistory.push({ role: "assistant", content: streamed });
+
+      if (state.speak && "speechSynthesis" in window) {
+        const utterance = new SpeechSynthesisUtterance(streamed);
+        utterance.rate = 0.95;
+        window.speechSynthesis.speak(utterance);
+      }
+
+      const moodVal = estimateMood(message + " " + streamed);
+      state.moodHistory.push(moodVal);
+      drawSparkline(state.moodHistory);
+      el.moodLabel.textContent = moodVal > 0.2 ? "Lighter" : moodVal < -0.2 ? "Carrying weight" : "Steady";
+      el.moodEmoji.textContent = moodVal > 0.2 ? "🌱" : moodVal < -0.2 ? "🌧️" : "🍃";
+
+      renderFollowups(placeholder, [
+        "Tell me more about what's on your mind",
+        "Help me make sense of this",
+        "What should I be asking myself?",
+      ]);
+
+      state.sending = false;
+      setComposerEnabled(true);
+      el.input.focus();
+      return;
+    } catch (gpuError) {
+      console.warn("WebGPU generation failed, falling back to server API:", gpuError);
+    }
+  }
 
   try {
     const response = await fetch("/api/chat/stream", {
@@ -733,6 +863,43 @@ async function loadResources() {
 async function loadHealth() {
   const dot = el.status.querySelector(".status__dot");
   const label = el.status.querySelector(".status__label");
+
+  // Attempt WebGPU in-browser Gemma 2B initialization
+  if ("gpu" in navigator) {
+    try {
+      dot.dataset.state = "warming";
+      label.textContent = "WebGPU: checking...";
+
+      const webllm = await import("https://esm.run/@mlc-ai/web-llm");
+      const MODEL_ID = "gemma-2-2b-it-q4f16_1-MLC";
+
+      label.textContent = "WebGPU: loading Gemma...";
+
+      state.webGpuEngine = await webllm.CreateMLCEngine(MODEL_ID, {
+        initProgressCallback: (report) => {
+          const pct = Math.round((report.progress || 0) * 100);
+          label.textContent = `Gemma: ${pct}%`;
+        },
+      });
+
+      state.webGpuReady = true;
+      dot.dataset.state = "ok";
+      label.textContent = "WebGPU: Gemma 2B";
+      el.status.title = "Aura running entirely on client GPU via WebGPU (100% private, zero cloud cost).";
+
+      if ("speechSynthesis" in window) {
+        el.speakToggle.disabled = false;
+        el.speakToggle.closest(".switch").title =
+          "Spoken replies enabled via browser speech synthesis.";
+      }
+      return;
+    } catch (err) {
+      console.warn("WebGPU load failed or browser declined, falling back to API:", err);
+      dot.dataset.state = "degraded";
+      label.textContent = "API fallback";
+    }
+  }
+
   try {
     const response = await fetch("/api/health");
     const health = await response.json();
@@ -745,7 +912,7 @@ async function loadHealth() {
         .map(([key, on]) => `${on ? "✓" : "✕"} ${key}`)
         .join("\n");
 
-    if (!health.capabilities.audio_out) {
+    if (!health.capabilities.audio_out && !("speechSynthesis" in window)) {
       el.speakToggle.disabled = true;
       el.speakToggle.closest(".switch").title =
         "Spoken replies need a text-to-speech backend on the server.";
@@ -831,6 +998,8 @@ function init() {
       await fetch(`/api/sessions/${state.sessionId}`, { method: "DELETE" }).catch(() => {});
     }
     state.sessionId = null;
+    state.chatHistory = [];
+    state.moodHistory = [];
     el.thread.innerHTML = "";
     el.crisis.hidden = true;
     drawSparkline([]);

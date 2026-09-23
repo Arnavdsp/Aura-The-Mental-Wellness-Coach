@@ -4,6 +4,9 @@
   "installCommand": "pip install -r requirements.txt",
   "buildCommand": "true",
   "outputDirectory": "public",
+  "rewrites": [
+    { "source": "/assets/:match*", "destination": "/:match*" }
+  ],
   "functions": {
     "api/index.py": {
       "maxDuration": 30,
@@ -11,4 +14,3 @@
     }
   }
 }
-

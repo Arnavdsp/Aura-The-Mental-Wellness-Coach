@@ -294,7 +294,21 @@ make serve      # hot reload
 CI runs the suite on Python 3.10–3.12, lints, builds the Docker image and smoke
 tests the running container.
 
-### Deploy to Vercel (free tier, echo engine, no GPU)
+### Deploy to Vercel + WebGPU (Real Gemma in-browser, $0 cloud GPU cost)
+
+Vercel hosts Aura's frontend, and modern browsers run **Gemma 2B directly on the user's GPU via WebGPU** (powered by WebLLM). This means:
+- **Real Gemma AI coaching** on Vercel without requiring cloud GPU servers.
+- **100% client-side privacy**: Voice and text reflections remain on the device.
+- **Zero server costs**: Vercel serves the static assets; inference is executed client-side.
+- **Automatic fallback**: If a browser lacks WebGPU support, Aura gracefully falls back to the serverless API.
+
+```bash
+# One-time: link the project
+vercel link
+
+# Deploy
+vercel deploy --prod
+```
 
 Vercel can host Aura as a single Python serverless function. Because the function
 is short-lived and stateless, only the **echo engine** is supported on Vercel —
