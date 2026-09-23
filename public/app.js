@@ -870,10 +870,12 @@ async function loadHealth() {
       dot.dataset.state = "warming";
       label.textContent = "WebGPU: checking...";
 
-      const webllm = await import("https://esm.run/@mlc-ai/web-llm");
-      const MODEL_ID = "gemma-2-2b-it-q4f16_1-MLC";
+      // Use the official WebLLM CDN (jsdelivr handles WASM assets correctly)
+      const webllm = await import("https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.73/dist/web-llm.js");
+      // Smallest reliable model: TinyLlama 1.1B (fast download ~700MB, works on all WebGPU devices)
+      const MODEL_ID = "TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC";
 
-      label.textContent = "WebGPU: loading Gemma...";
+      label.textContent = "WebGPU: downloading model (~700MB first visit)...";
 
       state.webGpuEngine = await webllm.CreateMLCEngine(MODEL_ID, {
         initProgressCallback: (report) => {
@@ -896,7 +898,8 @@ async function loadHealth() {
     } catch (err) {
       console.warn("WebGPU load failed or browser declined, falling back to API:", err);
       dot.dataset.state = "degraded";
-      label.textContent = "API fallback";
+      label.textContent = "API fallback (WebGPU failed: " + (err.message || err) + ")";
+      console.error("Full WebGPU error:", err);
     }
   }
 
