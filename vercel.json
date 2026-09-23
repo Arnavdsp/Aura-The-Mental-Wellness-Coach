@@ -1,11 +1,13 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "project": "aura-wellness-coach",
   "installCommand": "pip install -r requirements.txt",
   "buildCommand": "true",
   "outputDirectory": "public",
   "rewrites": [
-    { "source": "/assets/:match*", "destination": "/:match*" }
+    {
+      "source": "/assets/:match*",
+      "destination": "/:match*"
+    }
   ],
   "functions": {
     "api/index.py": {
