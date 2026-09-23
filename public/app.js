@@ -868,10 +868,10 @@ async function loadHealth() {
   if ("gpu" in navigator) {
     try {
       dot.dataset.state = "warming";
-      label.textContent = "WebGPU: checking...";
+      label.textContent = "Loading AI model...";
 
       // Use the official WebLLM CDN (jsdelivr handles WASM assets correctly)
-      const webllm = await import("https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.73/dist/web-llm.js");
+      const webllm = await import("https://esm.sh/@mlc-ai/web-llm@0.2.85");
       // Smallest reliable model: TinyLlama 1.1B (fast download ~700MB, works on all WebGPU devices)
       const MODEL_ID = "TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC";
 
@@ -921,8 +921,11 @@ async function loadHealth() {
         "Spoken replies need a text-to-speech backend on the server.";
     }
   } catch {
-    dot.dataset.state = "down";
-    label.textContent = "offline";
+    // API unreachable (expected on Vercel static mode) — app still usable via WebGPU
+    if (!state.webGpuReady) {
+      dot.dataset.state = "degraded";
+      label.textContent = "connecting...";
+    }
   }
 }
 
