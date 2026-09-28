@@ -25,7 +25,7 @@ pip install -e .
 aura serve
 ```
 
-Open <http://localhost:8000>.
+'''Open <http://localhost:8000>.'''
 
 That works on any laptop with no GPU, no model download and no API key, because
 the base install ships a **reflective-listening fallback engine** (see
