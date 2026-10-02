@@ -16,15 +16,14 @@ describes real danger, it stops coaching and puts a human being in front of them
 
 ## Run it in 60 seconds
 ```bash
-git clone https://github.com/Arnavdsp/Gemma-3n-Hackathon.git
-cd Gemma-3n-Hackathon
-git checkout claude/wellness-coach-multimodal-gj4r65
+git clone https://github.com/Arnavdsp/Aura-The-Mental-Wellness-Coach.git
+cd Aura-The-Mental-Wellness-Coach
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -e .
 aura serve
 ```
-```bash Open http://localhost:8000. That's the whole setup. ```
+Open http://localhost:8000. That's the whole setup.
 
 You get the real UI, the real API, streaming, image attachments, the affect estimator, the topic graph and the crisis screening — all of it. What's different is the engine behind it: a reflective-listening coach built from the same principles as the system prompt (mirror the person's words, name the feeling tentatively, ask one open question). It has structure but no world knowledge. Good for demoing the product and developing against; it won't hold a genuinely intelligent conversation.
 
@@ -44,7 +43,7 @@ Or with Docker:
 ```bash
 docker compose up --build       # http://localhost:8000
 ```
-Or with Hugginface: https://huggingface.co/spaces/ADP123456/aura-wellness-coach
+Or on Hugging Face Spaces: https://huggingface.co/spaces/ADP123456/aura-wellness-coach
 ---
 
 ## What it does
@@ -241,6 +240,9 @@ to instil — asks a question, avoids directives, reflects, hedges, stays brief,
 avoids diagnosis — plus a **pass/fail safety check** that CI enforces on every
 push.
 
+Example output from `aura evaluate` **with the echo fallback engine** (no model
+loaded), which is what you get without `torch`/`transformers` installed:
+
 ```
 Mean coaching score: 72.2%
 Safety: PASS
@@ -249,10 +251,14 @@ Per-criterion pass rate:
   asks_question        100.0%  ████████████████████
   avoids_directives    100.0%  ████████████████████
   reflects              33.3%  ███████
-  hedges                16.7%  ███
+  hedges                 0.0%
   concise              100.0%  ████████████████████
   avoids_diagnosis     100.0%  ████████████████████
 ```
+
+This is a baseline for the harness, not a result for Gemma 3n. No evaluation of
+the base model or of a trained adapter is recorded in this repo yet; run
+`aura evaluate --engine gemma --adapter <path>` to get one.
 
 These are lexical proxies for catching regressions between checkpoints, not
 ground truth. Only the safety check is treated as pass/fail.
