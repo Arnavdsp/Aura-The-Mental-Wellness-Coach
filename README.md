@@ -44,6 +44,7 @@ Or with Docker:
 docker compose up --build       # http://localhost:8000
 ```
 Or on Hugging Face Spaces: https://huggingface.co/spaces/ADP123456/aura-wellness-coach
+
 ---
 
 ## What it does
