@@ -21,3 +21,4 @@ wandb/
 .ipynb_checkpoints/
 .vercel
 .env*
+!.env.example

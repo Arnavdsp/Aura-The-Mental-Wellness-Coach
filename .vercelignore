@@ -20,7 +20,6 @@ docker-compose.yml
 .dockerignore
 
 # IDE and OS noise
-.claude/
 .vscode/
 .idea/
 *.pyc
