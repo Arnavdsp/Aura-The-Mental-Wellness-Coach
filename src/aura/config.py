@@ -7,12 +7,13 @@ without a code change. See ``.env.example`` for the full list.
 
 from __future__ import annotations
 
+import json
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -36,7 +37,9 @@ class Settings(BaseSettings):
     port: int = 8000
     log_level: str = "INFO"
     log_json: bool = False
-    cors_origins: list[str] = Field(default_factory=lambda: ["*"])
+    # NoDecode: without it pydantic-settings JSON-decodes list fields from the
+    # environment, so AURA_CORS_ORIGINS=* failed before _split_origins ran.
+    cors_origins: Annotated[list[str], NoDecode] = Field(default_factory=lambda: ["*"])
 
     # -- engine ----------------------------------------------------------
     engine: EngineName = "auto"
@@ -88,6 +91,8 @@ class Settings(BaseSettings):
     @classmethod
     def _split_origins(cls, value: object) -> object:
         if isinstance(value, str):
+            if value.lstrip().startswith("["):
+                return json.loads(value)
             return [item.strip() for item in value.split(",") if item.strip()]
         return value
 
