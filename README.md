@@ -59,7 +59,7 @@ Or on Hugging Face Spaces: https://huggingface.co/spaces/ADP123456/aura-wellness
 | Tone | A lexicon estimator over the transcript, optionally fused with a wav2vec2 prosody classifier. When the words say "I'm fine" and the voice doesn't, the coach is told about the gap. |
 | Speech out | SpeechT5 (or Piper) synthesises the reply. Markdown is stripped first so it doesn't read asterisks aloud. |
 | Memory | A stack of turns plus a topic co-occurrence graph, so it can notice that sleep keeps coming up alongside work, with no extra model calls. |
-| Crisis screen | A conservative lexical screen runs before generation. On a match, generation is skipped and real helplines are returned. Prompting can't get around it, because the model never gets the turn. |
+| Crisis screen | A conservative lexical screen runs before generation. On a CRISIS match, generation is skipped and real helplines are returned. Prompting can't get around it, because the model never gets the turn. |
 | Streaming | Server-sent events, so replies appear as they're written. |
 
 ### The interface
@@ -308,11 +308,12 @@ tests the running container.
 
 On Vercel, the server runs as one short-lived Python function, so it can only
 use the echo engine; Gemma 3n needs a long-lived GPU host (Modal, RunPod, or a
-Vast.ai box). To still get a real model there, the frontend loads Gemma 2B in
-the browser through WebLLM when the browser supports WebGPU. Text-only turns
-then run on the user's own GPU and stay on the device, at no server cost. If
-WebGPU isn't available, or a turn includes an attachment, the request goes to
-the serverless API instead. Sessions and uploaded media reset on every cold
+Vast.ai box). To still get a real model there, the frontend loads TinyLlama
+1.1B (`TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC`) in the browser through WebLLM when
+the browser supports WebGPU. Text-only turns then run on the user's own GPU at
+no server cost. If WebGPU isn't available, a turn includes an attachment, or
+in-browser generation fails, the message goes to the serverless API instead, so
+it does leave the device in those cases. Sessions and uploaded media reset on every cold
 start.
 
 ```bash
