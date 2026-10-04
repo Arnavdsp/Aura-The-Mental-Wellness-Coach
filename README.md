@@ -4,8 +4,9 @@
 
 Aura listens the way a good coach does. You can type, talk, or show it something.
 It reads tone as well as words, notices the themes you keep circling back to, and
-replies with reflection and one open question — not a checklist. When someone
-describes real danger, it stops coaching and puts a human being in front of them.
+replies with a reflection and one open question instead of a checklist. When
+someone describes real danger, it stops coaching and points them to a person who
+can help.
 
 <p align="center">
   <img src="docs/screenshots/conversation-light.png" width="49%" alt="Aura in light mode, with the session insights panel open" />
@@ -14,22 +15,25 @@ describes real danger, it stops coaching and puts a human being in front of them
 
 ---
 
-## Run it in 60 seconds
+## Run it
 ```bash
-git clone https://github.com/Arnavdsp/Aura-The-Mental-Wellness-Coach.git
-cd Aura-The-Mental-Wellness-Coach
+git clone https://github.com/Arnavdsp/aura-the-mental-wellness-coach.git
+cd aura-the-mental-wellness-coach
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -e .
 aura serve
 ```
-Open http://localhost:8000. That's the whole setup.
+Open http://localhost:8000.
 
-You get the real UI, the real API, streaming, image attachments, the affect estimator, the topic graph and the crisis screening — all of it. What's different is the engine behind it: a reflective-listening coach built from the same principles as the system prompt (mirror the person's words, name the feeling tentatively, ask one open question). It has structure but no world knowledge. Good for demoing the product and developing against; it won't hold a genuinely intelligent conversation.
-
-That works on any laptop with no GPU, no model download and no API key, because
-the base install ships a **reflective-listening fallback engine** (see
-[Engines](#engines)). 
+This runs on any laptop with no GPU, model download or API key, because the base
+install uses a reflective-listening fallback engine (see [Engines](#engines)).
+Everything else is the real thing: the UI, the API, streaming, image
+attachments, the affect estimator, the topic graph and the crisis screening.
+The fallback mirrors the person's words, names the feeling tentatively and asks
+one open question, the same principles as the system prompt. It has structure
+but no world knowledge, so it's fine for demos and development but won't hold
+a real conversation.
 
 To run the real thing:
 
@@ -51,12 +55,12 @@ Or on Hugging Face Spaces: https://huggingface.co/spaces/ADP123456/aura-wellness
 
 | | |
 |---|---|
-| **Listens in three modalities** | Type, record your voice, or share an image. Gemma 3n takes all three natively through one chat template — no bolted-on captioner or separate ASR service. |
-| **Reads tone, not just words** | A lexicon estimator over the transcript, optionally fused with a wav2vec2 prosody classifier. When the words say "I'm fine" and the voice doesn't, the coach is told about the gap. |
-| **Speaks back** | SpeechT5 (or Piper) synthesises the reply. Markdown is stripped first so it doesn't read asterisks aloud. |
-| **Remembers the shape of the conversation** | A stack of turns plus a topic **co-occurrence graph**, so it can tell you that sleep keeps coming up alongside work — with no extra model calls. |
-| **Screens for crisis before generating** | A conservative lexical screen runs *first*. On a crisis match, generation is skipped entirely and real helplines are returned. It cannot be talked around, because the model never gets the turn. |
-| **Streams** | Server-sent events, so replies appear as they're written. |
+| Input | Type, record your voice, or share an image. Gemma 3n takes all three through one chat template, with no separate captioner or ASR service. |
+| Tone | A lexicon estimator over the transcript, optionally fused with a wav2vec2 prosody classifier. When the words say "I'm fine" and the voice doesn't, the coach is told about the gap. |
+| Speech out | SpeechT5 (or Piper) synthesises the reply. Markdown is stripped first so it doesn't read asterisks aloud. |
+| Memory | A stack of turns plus a topic co-occurrence graph, so it can notice that sleep keeps coming up alongside work, with no extra model calls. |
+| Crisis screen | A conservative lexical screen runs before generation. On a CRISIS match, generation is skipped and real helplines are returned. Prompting can't get around it, because the model never gets the turn. |
+| Streaming | Server-sent events, so replies appear as they're written. |
 
 ### The interface
 
@@ -64,17 +68,16 @@ Or on Hugging Face Spaces: https://huggingface.co/spaces/ADP123456/aura-wellness
   <img src="docs/screenshots/welcome.png" width="60%" alt="Aura's opening screen" />
 </p>
 
-Designed to be quiet: muted sage and warm paper rather than saturated brand
-colour, one accent used sparingly, generous line height, and motion that honours
-`prefers-reduced-motion`. A tool that competes for your attention works against
-its own purpose.
+The design is deliberately quiet: muted sage and warm paper colours, one
+accent, generous line height, and motion that respects `prefers-reduced-motion`.
+A wellness tool shouldn't compete for attention.
 
-- **Voice** with a live waveform, so you can see it's hearing you
-- **Drag, drop or paste** an image anywhere on the page
-- **Session insights** — mood sparkline, direction, and the topic graph
-- **Full keyboard access**, visible focus rings, `aria-live` on the transcript
-- **Light and dark**, following the system or your explicit choice
-- **WCAG AA contrast**, verified programmatically rather than by eye
+- Voice input with a live waveform, so you can see it's hearing you
+- Drag, drop or paste an image anywhere on the page
+- Session insights: mood sparkline, direction, and the topic graph
+- Full keyboard access, visible focus rings, `aria-live` on the transcript
+- Light and dark themes, following the system or your choice
+- WCAG AA contrast, checked by a script
 - Works down to a 390 px phone
 
 <p align="center">
@@ -107,7 +110,7 @@ Each module is independently testable and has no import-time dependency on
 torch, which is why the suite runs in three seconds on a CPU.
 
 <details>
-<summary><strong>Repository layout</strong></summary>
+<summary>Repository layout</summary>
 
 ```
 src/aura/
@@ -153,10 +156,10 @@ notebooks/             # the original exploration notebooks
 | `gemma` | Require Gemma 3n. Fails loudly if the ML stack is missing. |
 | `echo` | The fallback engine, always. |
 
-**The echo engine is not a stub.** It is a small reflective-listening coach built
-from the same principles as the system prompt: mirror the speaker's own words,
-name the feeling tentatively, ask one open question. It has no world knowledge —
-only structure. It exists so that the UI, the API contract, CI and demos are
+The echo engine is a small reflective-listening coach built from the same
+principles as the system prompt: mirror the speaker's own words, name the
+feeling tentatively, ask one open question. It has structure but no world
+knowledge. It exists so that the UI, the API contract, CI and demos are
 exercised for real on any machine, and so a GPU outage degrades the product
 instead of ending it. Its output is deterministic per input.
 
@@ -166,14 +169,14 @@ instead of ending it. Its output is deterministic per input.
 
 This is a wellness coach, not a clinician, and the code says so everywhere.
 
-- The screen runs **before** generation. On a crisis match the model is never
+- The screen runs before generation. On a crisis match the model is never
   invoked, so no amount of prompting can route around it.
-- It **fails toward escalation**, and softens `CRISIS` to `ELEVATED` when the
+- It errs toward escalation, but softens `CRISIS` to `ELEVATED` when the
   language indicates a past or third-party account ("I used to…", "my friend
-  said…") — so someone recounting their recovery isn't hit with an interrupt.
+  said…"), so someone describing their recovery isn't interrupted.
 - Helplines are region-aware (`AURA_CRISIS_REGION`: `US`, `IN`, `UK`, `INTL`) and
   always include an international fallback.
-- The crisis reply still **acknowledges the person** before it lists numbers.
+- The crisis reply still acknowledges the person before it lists numbers.
 - Conversations live in memory only, expire on a TTL, and are never written to
   disk or used for training. `DELETE /api/sessions/{id}` erases one immediately.
 
@@ -182,7 +185,7 @@ This is a wellness coach, not a clinician, and the code says so everywhere.
 
 > **Aura is not a medical device and does not provide medical advice.** It is a
 > hackathon project. If you or someone you know is in crisis, contact your local
-> emergency services or a crisis line — <https://findahelpline.com> lists
+> emergency services or a crisis line. <https://findahelpline.com> lists
 > verified services in 130+ countries.
 
 ---
@@ -205,26 +208,26 @@ Then serve the adapter:
 AURA_ADAPTER_PATH=artifacts/wellness-coach/adapter AURA_ENGINE=gemma aura serve
 ```
 
-**Why DPO.** The thing being taught — reflective over directive, curious over
-dismissive — is a *preference between two plausible replies*, not a single
-correct string. Pairs are drawn from `jkhedri/psychology-dataset` (its own
+Why DPO: what's being taught (reflective over directive, curious over
+dismissive) is a preference between two plausible replies, not one correct
+string. Pairs are drawn from `jkhedri/psychology-dataset` (its own
 preferred/dispreferred columns) and `drublackberry/hbr-coaching-real-leaders`
 (real coach turns as `chosen`). SFT on the `chosen` side is available via
 `--strategy sft` for environments where DPO's reference model doesn't fit.
 
 <details>
-<summary><strong>Three bugs in the original notebook, and their fixes</strong></summary>
+<summary>Three bugs in the original notebook, and their fixes</summary>
 
-1. **The datasets were concatenated with `+`**, which `datasets.Dataset` doesn't
-   support — and the psychology set uses `question`/`response_j`/`response_k`,
+1. The datasets were concatenated with `+`, which `datasets.Dataset` doesn't
+   support. On top of that, the psychology set uses `question`/`response_j`/`response_k`,
    not `prompt`/`chosen`/`rejected`, so the validation pass would have discarded
    every row regardless. Now mapped explicitly, with a per-reason drop tally.
-2. **The rejected coaching reply spliced in the user's own first word**
+2. The rejected coaching reply spliced in the user's own first word
    (`f"You should just {client_text.lower().split()[0]} differently"`), which
    teaches the model that rejected replies begin with the user's words rather
    than that they are directive. Replaced with generic directive responses that
    carry no content from the prompt.
-3. **Training failures were swallowed by a bare `except`** that silently fell
+3. Training failures were swallowed by a bare `except` that silently fell
    through to a second trainer, so a misconfigured run looked like a successful
    one. The fallback is now explicit (`--fallback-to-sft`) and logs the
    traceback first.
@@ -233,15 +236,15 @@ Also added: deduplication, length filtering, a held-out eval split, and bf16/fp1
 selected from the hardware rather than hard-coded to fp16.
 </details>
 
-### Evaluating behaviour, not just loss
+### Evaluating behaviour
 
-A loss curve says nothing about whether a wellness coach got *better*.
+A loss curve says nothing about whether a wellness coach got better.
 `aura evaluate` scores held-out prompts on the qualities the fine-tune is meant
 to instil — asks a question, avoids directives, reflects, hedges, stays brief,
-avoids diagnosis — plus a **pass/fail safety check** that CI enforces on every
-push.
+avoids diagnosis. There's also a pass/fail safety check that CI enforces on
+every push.
 
-Example output from `aura evaluate` **with the echo fallback engine** (no model
+Example output from `aura evaluate` with the echo fallback engine (no model
 loaded), which is what you get without `torch`/`transformers` installed:
 
 ```
@@ -301,26 +304,17 @@ make serve      # hot reload
 CI runs the suite on Python 3.10–3.12, lints, builds the Docker image and smoke
 tests the running container.
 
-### Deploy to Vercel + WebGPU (Real Gemma in-browser, $0 cloud GPU cost)
+### Deploying to Vercel
 
-Vercel hosts Aura's frontend, and modern browsers run **Gemma 2B directly on the user's GPU via WebGPU** (powered by WebLLM). This means:
-- **Real Gemma AI coaching** on Vercel without requiring cloud GPU servers.
-- **100% client-side privacy**: Voice and text reflections remain on the device.
-- **Zero server costs**: Vercel serves the static assets; inference is executed client-side.
-- **Automatic fallback**: If a browser lacks WebGPU support, Aura gracefully falls back to the serverless API.
-
-```bash
-# One-time: link the project
-vercel link
-
-# Deploy
-vercel deploy --prod
-```
-
-Vercel can host Aura as a single Python serverless function. Because the function
-is short-lived and stateless, only the **echo engine** is supported on Vercel —
-Gemma 3n needs a long-lived GPU host (Modal, RunPod, or a Vast.ai box). The
-public website works; sessions and uploaded media reset on every cold start.
+On Vercel, the server runs as one short-lived Python function, so it can only
+use the echo engine; Gemma 3n needs a long-lived GPU host (Modal, RunPod, or a
+Vast.ai box). To still get a real model there, the frontend loads TinyLlama
+1.1B (`TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC`) in the browser through WebLLM when
+the browser supports WebGPU. Text-only turns then run on the user's own GPU at
+no server cost. If WebGPU isn't available, a turn includes an attachment, or
+in-browser generation fails, the message goes to the serverless API instead, so
+it does leave the device in those cases. Sessions and uploaded media reset on every cold
+start.
 
 ```bash
 # One-time: link the project
@@ -346,20 +340,20 @@ To switch static-file paths when developing locally, leave `AURA_STATIC_DIR`
 unset (it defaults to `web/`). On Vercel, `api/index.py` sets it to `public/`
 before importing the app.
 
-**Vercel limitations to be aware of:**
+Vercel limitations:
 
 | | |
 |---|---|
 | Function timeout | 30s on the hobby plan. The echo engine responds in milliseconds. |
 | Cold start | ~1-2s. The first request after inactivity will be slow. |
 | Memory | 1024 MB by default. More than enough for the echo engine. |
-| Sessions | In-memory. Each cold start wipes them — by design, since this is a wellness product. |
+| Sessions | In-memory, so each cold start wipes them. That's acceptable for a wellness product that shouldn't keep conversations. |
 | No ffmpeg | WebM/Opus uploads will not decode on Vercel. Plain WAV works. |
 | Static assets | Served by FastAPI inside the function, not from Vercel's CDN. Fine for a demo, slow for production. |
 
 ### Configuration
 
-Every setting is an `AURA_*` environment variable — see [`.env.example`](.env.example)
+Every setting is an `AURA_*` environment variable; see [`.env.example`](.env.example)
 for the annotated list. The ones that matter most:
 
 | Variable | Default | Notes |
@@ -378,14 +372,14 @@ for the annotated list. The ones that matter most:
 - Sessions are in-process, so the service is single-node as written. `SessionStore`
   is deliberately narrow (`get`/`create`/`delete`) so Redis can replace it.
 - On Vercel, the function is short-lived. Each cold start wipes session state
-  and uploaded attachments — acceptable for a privacy-first wellness product,
-  not for long-running coaching relationships.
+  and uploaded attachments. That's fine for privacy, but not for long-running
+  coaching relationships.
 - The affect lexicon is English-only. Gemma 3n itself is multilingual; the tone
   estimate is not.
-- Prosody-based emotion is off by default — it needs an extra wav2vec2 model and
+- Prosody-based emotion is off by default, because it needs an extra wav2vec2 model and
   adds noticeable latency.
 - Browser audio arrives as WebM/Opus; decoding it needs `ffmpeg` on the host
-  (included in the Docker image, but **not** in Vercel functions). Plain WAV
+  (included in the Docker image, but not in Vercel functions). Plain WAV
   uploads work everywhere.
 
 ---
